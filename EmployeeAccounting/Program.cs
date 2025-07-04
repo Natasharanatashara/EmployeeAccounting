@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Xml.Linq;
 
 class Employee
 {
@@ -34,7 +35,7 @@ class Program
     // Метод вывода меню 
     static void ShowMenu()
     {
-        Console.WriteLine("Меню:");
+        Console.WriteLine("\nМеню:");
         Console.WriteLine("1. Добавить сотрудника");
         Console.WriteLine("2. Обновить информацию о сотруднике");
         Console.WriteLine("3. Просмотреть список сотрудников");
@@ -80,24 +81,27 @@ class Program
 
 
 
-    // Конструкторы с исключениями (с передачей сообщения базовому классу Exception)
-
-    public class EmployeeAlreadyExistsException : Exception    // Некорректная заработная плата
+    // Конструкторы с исключениями
+    public class EmployeeNameAlreadyExistsException : Exception   // Дубль сотрудника по имени
+    {
+        public EmployeeNameAlreadyExistsException(string message) : base(message) { }
+    }
+    public class EmployeeAlreadyExistsException : Exception     // Дубль ID
     {
         public EmployeeAlreadyExistsException(string message) : base(message) { }
     }
 
-    public class InvalidWagesException : Exception   // Некорректная часовая ставка 
+    public class InvalidWagesException : Exception    // Не найден сотрудник
     {
         public InvalidWagesException(string message) : base(message) { }
     }
 
-    public class NegativeHoursException : Exception  // Некорректные отработанные рабочие часы
+    public class NegativeHoursException : Exception  // Исключение для отрицательных часов
     {
         public NegativeHoursException(string message) : base(message) { }
     }
 
-    public class OverworkedHoursException : Exception  // Некорректные отработанные рабочие часы
+    public class OverworkedHoursException : Exception  // Исключение для перебора часов
     {
         public OverworkedHoursException(string message) : base(message) { }
     }
@@ -108,52 +112,167 @@ class Program
     }
 
 
-    // Методы проверки ввода 
-    static bool TryGetIntInput(string prompt, out int result)
+    // Проверка наличия сотрудников с таким же именем
+
+    private static bool CheckIfEmployeeWithSameNameExists(string name)
     {
-        while (true)
+        return employees.Any(e => e.Name.ToLower() == name.ToLower());
+    }
+
+
+    // Проверка существования сотрудника с данным ID
+    static void CheckIfEmployeeWithSameIdExists(int id)
+    {
+        if (employees.Exists(e => e.Id == id))
         {
-            try
-            {
-                Console.Write(prompt);
-                result = Convert.ToInt32(Console.ReadLine());
-                return true;
-            }
-            catch (FormatException)
-            {
-                Console.WriteLine("Некорректный ввод. Необходимо вводить только целые числа");
-            }
+            throw new EmployeeAlreadyExistsException($"Сотрудник с ID={id} уже существует.");
         }
     }
 
+    // Нахождение сотрудника по ID
+    static Employee FindEmployeeById(int id)
+    {
+        var foundEmp = employees.Find(e => e.Id == id);
+        if (foundEmp == null)
+        {
+            throw new NoSuchEmployeeException($"Сотрудник с ID={id} не найден.");
+        }
+        return foundEmp;
+    }
+
+    // Ввод дробных чисел
     static bool TryGetDoubleInput(string prompt, out double result)
     {
         while (true)
         {
-            try
-            {
-                Console.Write(prompt);
-                result = Convert.ToDouble(Console.ReadLine());
+            Console.Write(prompt);
+            if (double.TryParse(Console.ReadLine(), out result))
                 return true;
-            }
-            catch (FormatException)
-            {
-                Console.WriteLine("Некорректный ввод. Необходимо вводить только целые числа.");
-            }
+            else
+                Console.WriteLine("Некорректный ввод. Введите действительное число.");
+        }
+    }
+
+    // Ввод целых чисел
+    static bool TryGetIntInput(string prompt, out int result)
+    {
+        while (true)
+        {
+            Console.Write(prompt);
+            if (int.TryParse(Console.ReadLine(), out result))
+                return true;
+            else
+                Console.WriteLine("Некорректный ввод. Введите целое число.");
         }
     }
 
 
 
-    // Метод добавления нового сотрудника  case "1"
+
+    /* Метод добавления нового сотрудника  case "1"
     static void AddEmployee()
     {
         Console.Write("Имя сотрудника: ");
         string name = Console.ReadLine().Trim();
 
-        if (employees.Exists(emp => emp.Name.Equals(name)))
+        double wages;
+        do
         {
-            Console.WriteLine("Сотрудник с таким именем уже существует. Попробуйте другое имя.");
+            if (!TryGetDoubleInput("Почасовая ставка (рублей/час): ", out wages))
+                continue;
+
+            if (wages < MIN_HOURLY_RATE)
+            {
+                Console.WriteLine($"Минимальная почасовая ставка должна быть не менее {MIN_HOURLY_RATE}. Повторите ввод.");
+            }
+        } while (wages < MIN_HOURLY_RATE);
+
+        int hoursWorked;
+        do
+        {
+            if (!TryGetIntInput("Количество отработанных часов: ", out hoursWorked))
+                continue;
+
+            if (hoursWorked < 0)
+            {
+                Console.WriteLine("Отработанные часы не могут быть отрицательными. Повторите ввод.");
+            }
+            else if (hoursWorked > MAX_WORK_HOURS)
+            {
+                Console.WriteLine($"Максимальное количество часов превышает лимит ({MAX_WORK_HOURS}). Повторите ввод.");
+            }
+        } while (hoursWorked < 0 || hoursWorked > MAX_WORK_HOURS);
+
+        try
+        {
+            CheckIfEmployeeWithSameIdExists(nextId);
+            Employee employee = new Employee(nextId++, name, wages, hoursWorked);
+            employees.Add(employee);
+            Console.WriteLine($"Сотрудник '{name}' успешно добавлен!");
+        }
+        catch (EmployeeAlreadyExistsException ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    // Метод добавления сотрудника
+    static void AddEmployee()
+    {
+        Console.Write("Имя сотрудника: ");
+        string name = Console.ReadLine().Trim();
+
+        double wages;
+        do
+        {
+            if (!TryGetDoubleInput("Почасовая ставка (рублей/час): ", out wages))
+                continue;
+
+            if (wages < MIN_HOURLY_RATE)
+            {
+                Console.WriteLine($"Минимальная почасовая ставка должна быть не менее {MIN_HOURLY_RATE}. Повторите ввод.");
+            }
+        } while (wages < MIN_HOURLY_RATE);
+
+        int hoursWorked;
+        do
+        {
+            if (!TryGetIntInput("Количество отработанных часов: ", out hoursWorked))
+                continue;
+
+            if (hoursWorked < 0)
+            {
+                Console.WriteLine("Отработанные часы не могут быть отрицательными. Повторите ввод.");
+            }
+            else if (hoursWorked > MAX_WORK_HOURS)
+            {
+                Console.WriteLine($"Максимальное количество часов превышает лимит ({MAX_WORK_HOURS}). Повторите ввод.");
+            }
+        } while (hoursWorked < 0 || hoursWorked > MAX_WORK_HOURS);
+
+        try
+        {
+            CheckIfEmployeeWithSameIdExists(nextId);
+            Employee employee = new Employee(nextId++, name, wages, hoursWorked);
+            employees.Add(employee);
+            Console.WriteLine($"Сотрудник '{name}' успешно добавлен!");
+        }
+        catch (EmployeeAlreadyExistsException ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }*/
+
+    // Модифицированный метод добавления сотрудника
+    static void AddEmployee()
+    {
+        Console.Write("Имя сотрудника: ");
+        string name = Console.ReadLine().Trim();
+
+        // Проверка существования сотрудника с таким же именем
+        if (CheckIfEmployeeWithSameNameExists(name))
+        {
+            Console.WriteLine("Сотрудник с именем уже существует");
             return;
         }
 
@@ -185,9 +304,21 @@ class Program
             }
         } while (hoursWorked < 0 || hoursWorked > MAX_WORK_HOURS);
 
-        Employee employee = new Employee(nextId++, name, wages, hoursWorked);
-        employees.Add(employee);
-        Console.WriteLine($"Сотрудник '{name}' успешно добавлен!");
+        try
+        {
+            CheckIfEmployeeWithSameIdExists(nextId); // проверка на уникальный ID
+            Employee employee = new Employee(nextId++, name, wages, hoursWorked);
+            employees.Add(employee);
+            Console.WriteLine($"Сотрудник '{name}' успешно добавлен!");
+        }
+        catch (EmployeeAlreadyExistsException ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+        catch (EmployeeNameAlreadyExistsException ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
     }
 
 
@@ -213,7 +344,7 @@ class Program
 
         while (true)
         {
-            Console.WriteLine("\\nЧто требуется изменить?");
+            Console.WriteLine("\nЧто требуется изменить?");
             Console.WriteLine("6. Имя сотрудника");
             Console.WriteLine("7. Почасовую ставку");
             Console.WriteLine("8. Отработанные часы");
@@ -232,6 +363,12 @@ class Program
                 case "6": // Изменение имени сотрудника
                     Console.Write("Введите новое имя сотрудника: ");
                     string newName = Console.ReadLine().Trim();
+
+                    if (CheckIfEmployeeWithSameNameExists(newName))
+                    {
+                        Console.WriteLine("Сотрудник с именем уже существует");
+                        return;
+                    }
 
                     if (newName != "")
                     {
@@ -276,6 +413,7 @@ class Program
             }
         }
     }
+
 
 
     // Метод просмотра списка сотрудников - case "3"
