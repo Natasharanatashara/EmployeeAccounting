@@ -39,16 +39,13 @@ namespace EmployeeManagementSystem
     }
 
     /// <summary>
-    /// Менеджер для работы с сотрудниками.
+    /// Методы для управления данными сотрудника
     /// </summary>
     public sealed class EmployeeManager : IEmployeeManager<Employee>
     {
         private readonly List<Employee> employees = new List<Employee>();
         private int nextId = 1;
 
-        /// <summary>
-        /// Добавляет нового сотрудника.
-        /// </summary>
         public void Add(Employee employee)
         {
             if (this.employees.Any(e => e.Name.Equals(employee.Name, StringComparison.OrdinalIgnoreCase)))
@@ -60,18 +57,12 @@ namespace EmployeeManagementSystem
             this.employees.Add(employee);
         }
 
-        /// <summary>
-        /// Получает сотрудника по имени.
-        /// </summary>
         public Employee Get(string name)
         {
             return this.employees.FirstOrDefault(e => e.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
                 ?? throw new NoSuchEmployeeException($"Сотрудник с именем '{name}' не найден.");
         }
 
-        /// <summary>
-        /// Обновляет информацию о сотруднике.
-        /// </summary>
         public void Update(Employee employee)
         {
             var existing = this.GetById(employee.Id);
@@ -86,17 +77,11 @@ namespace EmployeeManagementSystem
             existing.HoursWorked = employee.HoursWorked;
         }
 
-        /// <summary>
-        /// Получает список всех сотрудников.
-        /// </summary>
         public IEnumerable<Employee> GetAll()
         {
             return this.employees;
         }
 
-        /// <summary>
-        /// Удаляет сотрудника по идентификатору.
-        /// </summary>
         public void Remove(int id)
         {
             var employee = this.GetById(id);
@@ -109,8 +94,7 @@ namespace EmployeeManagementSystem
                 ?? throw new NoSuchEmployeeException($"Сотрудник с ID={id} не найден.");
         }
     }
-
-    
+  
     /// <summary>
     /// Главный класс программы.
     /// </summary>
@@ -120,9 +104,6 @@ namespace EmployeeManagementSystem
         private const int MaxWorkHours = 168;
         private static readonly EmployeeManager EmployeeManager = new EmployeeManager();
 
-        /// <summary>
-        /// Точка входа в программу.
-        /// </summary>
         public static void Main()
         {
             while (true)
