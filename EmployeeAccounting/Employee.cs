@@ -44,4 +44,48 @@ namespace EmployeeManagementSystem
         /// </summary>
         public abstract decimal CalculateSalary();
     }
+    /// <summary>
+    /// Сотрудник с полной занятостью.
+    /// </summary>
+    public sealed class FullTimeEmployee : Employee
+    {
+        /// <summary>
+        /// Конструктор класса FullTimeEmployee.
+        /// </summary>
+        public FullTimeEmployee(int id, string name, decimal baseSalary, int hoursWorked)
+            : base(id, name, baseSalary, hoursWorked)
+        {
+        }
+
+        /// <summary>
+        /// Рассчитывает зарплату (фиксированная).
+        /// </summary>
+        public override decimal CalculateSalary()
+        {
+            return this.BaseSalary;
+        }
+    }
+
+    /// <summary>
+    /// Сотрудник с частичной занятостью.
+    /// </summary>
+    public sealed class PartTimeEmployee : Employee
+    {
+        /// <summary>
+        /// Конструктор класса PartTimeEmployee.
+        /// </summary>
+        public PartTimeEmployee(int id, string name, decimal baseSalary, int hoursWorked)
+            : base(id, name, baseSalary, hoursWorked)
+        {
+        }
+
+        /// <summary>
+        /// Рассчитывает зарплату (почасовая).
+        /// </summary>
+        public override decimal CalculateSalary()
+        {
+            return this.BaseSalary * this.HoursWorked;
+        }
+    }
+
 }
